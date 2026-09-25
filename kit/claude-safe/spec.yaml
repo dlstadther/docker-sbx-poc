@@ -1,0 +1,25 @@
+schemaVersion: "2"
+kind: sandbox
+name: claude-safe
+extends: claude
+
+# sbx mounts host paths at the same absolute path inside the sandbox, so this
+# points Claude Code at the host ~/.claude that sbxenv.yaml mounts.
+# setup.sh replaces __HOME__ with your $HOME, because kit values do not
+# expand ~ or $HOME.
+environment:
+  variables:
+    CLAUDE_CONFIG_DIR: __HOME__/.claude
+
+# The sandbox sees GH_TOKEN=proxy-managed. The real token stays on the host,
+# and the sbx proxy adds it to requests to api.github.com. setup.sh stores the
+# token with `sbx secret set github`.
+credentials:
+  - service: github
+    description: GitHub CLI token, for `gh` API calls (PR creation, etc.)
+    apiKey:
+      name: GH_TOKEN
+      proxyManaged: true
+      inject:
+        - domain: api.github.com
+          scheme: bearer

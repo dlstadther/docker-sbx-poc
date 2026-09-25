@@ -1,0 +1,19 @@
+# Base for ~/.sbxenv.yaml. setup.sh copies this file and appends the
+# read-only mounts it finds for your ~/.claude.
+# `sbx env run` with no PATH reads ~/.sbxenv.yaml, so every project gets these
+# defaults. Relative paths resolve from the directory of ~/.sbxenv.yaml
+# (your home). Kit sources do not accept ~ or $HOME.
+schemaVersion: "1"
+agent: claude-safe
+kits:
+  - source: ./.sbx-kits/claude-safe
+  # Optional mixin from docker/sbx-kits-contrib for GitHub SSH access.
+  # Needs "github.com/docker/" in kit.allowedSources (setup.sh sets this).
+  - git+https://github.com/docker/sbx-kits-contrib.git#dir=github-ssh
+workspace: ${{ env.projectDir }}
+
+# ~/.claude is writable, so sessions persist across sandboxes, you can read
+# them on the host, and a /login inside one sandbox carries over to the next.
+# setup.sh adds read-only mounts below it for the parts that must not change.
+additionalWorkspaces:
+  - path: ./.claude
