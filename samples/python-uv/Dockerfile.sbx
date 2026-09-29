@@ -1,0 +1,37 @@
+# Sandbox template for this project. Build it on the host, so the sandbox
+# never needs the apt or GitHub download hosts.
+# It holds no credentials. The sbx proxy adds the Artifactory token.
+#
+# Rebuild only when a Python version, uv, or a system package changes.
+# A pyproject.toml or uv.lock change needs only `uv sync` in the sandbox.
+FROM docker/sandbox-templates:claude-code
+
+USER root
+# build-essential: iteration-utilities has no Linux arm64 wheel, so uv
+# compiles it from source on Apple silicon.
+RUN apt-get -qq update && \
+    apt-get -qq install --yes build-essential vim zip && \
+    rm -rf /var/lib/apt/lists/*
+
+# The base image has uv 0.9. This matches the project Dockerfile.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# The make scripts compare `python --version` to the nearest .python-version
+# (3.13.11 at the root, 3.11.8 in airflow/). mise does this on the host.
+# This shim does the same with the Pythons that uv installs below.
+RUN printf '#!/bin/sh\nexec "$(uv python find)" "$@"\n' > /usr/local/bin/python && \
+    chmod 755 /usr/local/bin/python
+
+USER agent
+# scripts/99_function_library.sh (check_dependency_uv) exits if this file
+# is missing. It holds no credentials. The sbx proxy adds the token.
+RUN mkdir -p /home/agent/.config/uv && \
+    printf '[[index]]\nurl = "https://XXXXXX.jfrog.io/artifactory/api/pypi/pypi/simple"\ndefault = true\n' \
+        > /home/agent/.config/uv/uv.toml
+# check_dependency_python also exits if these Poetry and pip credential files
+# are missing. uv never reads them, so they stay empty.
+RUN mkdir -p /home/agent/.config/pypoetry /home/agent/.pip && \
+    touch /home/agent/.config/pypoetry/auth.toml /home/agent/.pip/pip.conf /home/agent/.pypirc
+
+# Keep these versions the same as mise.toml.
+RUN uv python install 3.13.11 3.11.8

@@ -9,13 +9,19 @@
 # Overrides (environment variables):
 #   SBX_POLICY           network policy preset for first-time init: deny-all | balanced | allow-all (default deny-all)
 #   SBX_ALLOWED_SOURCES  JSON list for kit.allowedSources (default: docker.io + github.com/docker)
+#   ARTIFACTORY_HOST     your JFrog host, for example acme.jfrog.io. Unset: the script skips the Artifactory credential.
+#   ARTIFACTORY_USER     username of the uv login for ARTIFACTORY_HOST (default: your git user.email)
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 KIT_DIR="$HOME/.sbx-kits/claude-safe"
 ENV_FILE="$HOME/.sbxenv.yaml"
+SBX_CREDENTIALS="$HOME/.config/sbx/credentials.yaml"
 SBX_POLICY="${SBX_POLICY:-deny-all}"
+# The kit has the host placeholder XXXXXX.jfrog.io. The script replaces it when it installs the kit.
+ARTIFACTORY_HOST="${ARTIFACTORY_HOST:-XXXXXX.jfrog.io}"
+ARTIFACTORY_USER="${ARTIFACTORY_USER:-$(git config user.email || true)}"
 SBX_ALLOWED_SOURCES="${SBX_ALLOWED_SOURCES:-[\"docker.io/\",\"github.com/docker/\"]}"
 TS="$(date +%Y%m%d%H%M%S)"
 
@@ -141,10 +147,30 @@ else
   echo "gh not installed or not logged in. Skipped. Run 'gh auth login', then re-run."
 fi
 
+echo "==> Artifactory credential"
+# sbx reads the token from the uv Keychain entry each time it needs it, so a
+# new `uv auth login` on the host needs no re-run of this script.
+# uv finds a Keychain entry only by username and host.
+ARTIFACTORY_TOKEN_CMD="env UV_PREVIEW_FEATURES=native-auth uv auth token --username $ARTIFACTORY_USER $ARTIFACTORY_HOST"
+if [ "$ARTIFACTORY_HOST" = "XXXXXX.jfrog.io" ]; then
+  echo "ARTIFACTORY_HOST is not set. Skipped. Set it to your JFrog host, then re-run."
+elif command -v uv >/dev/null 2>&1 && sh -c "$ARTIFACTORY_TOKEN_CMD" >/dev/null 2>&1; then
+  sbx secret set artifactory --command "$ARTIFACTORY_TOKEN_CMD"
+  # sbx withholds a custom kit credential until a binding approves it. The
+  # approval prompt does not show in every start mode, so write it here.
+  if ! grep -q '^ *artifactory:' "$SBX_CREDENTIALS" 2>/dev/null; then
+    mkdir -p "$(dirname "$SBX_CREDENTIALS")"
+    [ -s "$SBX_CREDENTIALS" ] || echo "bindings:" > "$SBX_CREDENTIALS"
+    printf '    artifactory:\n        apiKey:\n            domains:\n                - %s\n' "$ARTIFACTORY_HOST" >> "$SBX_CREDENTIALS"
+  fi
+else
+  echo "No uv Keychain login for $ARTIFACTORY_HOST. Skipped. Run 'uv auth login $ARTIFACTORY_HOST --username $ARTIFACTORY_USER', or set ARTIFACTORY_USER, then re-run."
+fi
+
 echo "==> Kit: $KIT_DIR"
 mkdir -p "$KIT_DIR"
 backup "$KIT_DIR/spec.yaml"
-sed "s|__HOME__|$HOME|g" "$REPO_DIR/kit/claude-safe/spec.yaml" > "$KIT_DIR/spec.yaml"
+sed "s|__HOME__|$HOME|g; s|XXXXXX\.jfrog\.io|$ARTIFACTORY_HOST|g" "$REPO_DIR/kit/claude-safe/spec.yaml" > "$KIT_DIR/spec.yaml"
 
 echo "==> Environment file: $ENV_FILE"
 new_env="$(render_env)"

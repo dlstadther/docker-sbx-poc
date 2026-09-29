@@ -1,0 +1,9 @@
+# Docker Sandboxes environment for this project. `sbx env run` reads this
+# file and merges ~/.sbxenv.yaml beneath it (agent, kits, ~/.claude mounts).
+# Build the template first: see Dockerfile.sbx.
+schemaVersion: "1"
+sandboxOptions:
+  # Change "my-project" to a short name for your project. sbx.sh reads this value.
+  template: local/my-project-sbx:v1
+  pullPolicy: never
+env: {}

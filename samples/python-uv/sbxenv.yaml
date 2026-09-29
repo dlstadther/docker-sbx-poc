@@ -1,0 +1,10 @@
+# Docker Sandboxes environment for this project. `sbx env run` reads this
+# file and merges ~/.sbxenv.yaml beneath it (agent, kits, ~/.claude mounts).
+# Build the template first: see Dockerfile.sbx.
+schemaVersion: "1"
+sandboxOptions:
+  template: local/python-uv-sbx:py3.13-py3.11
+  pullPolicy: never
+env:
+  # Both Pythons are in the template. uv must not go to GitHub for them.
+  UV_PYTHON_DOWNLOADS: never

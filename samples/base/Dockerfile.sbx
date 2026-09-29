@@ -1,0 +1,19 @@
+# Sandbox template for this project. Build it on the host with ./sbx.sh build.
+# The build has full network access, so the sandbox never needs the apt or other download hosts.
+# Put no credentials in this image. The sbx proxy adds tokens to requests at run time.
+#
+# Rebuild only when a runtime version, a tool, or a system package changes.
+FROM docker/sandbox-templates:claude-code
+
+# System packages. Install them as root.
+# USER root
+# RUN apt-get -qq update && \
+#     apt-get -qq install --yes build-essential && \
+#     rm -rf /var/lib/apt/lists/*
+
+# Language runtimes and tools for the agent user. Keep the versions the same as the project (for example
+# .python-version, .nvmrc, or mise.toml).
+# USER agent
+# RUN ...
+
+USER agent
