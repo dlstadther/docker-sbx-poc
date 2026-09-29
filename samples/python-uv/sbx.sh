@@ -29,6 +29,14 @@ template_id() {
     awk -v repo="docker.io/${IMAGE%:*}" -v tag="${IMAGE##*:}" '$1 == repo && $2 == tag { print $3 }'
 }
 
+# In a git worktree, .git is a file that points into the main repository .git folder, outside this directory.
+# sbxenv.yaml mounts that folder from this value.
+env_run() {
+  local git_dir
+  git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+  sbx env run --env-arg gitCommonDir="$git_dir"
+}
+
 sandbox_exists() {
   sbx ls 2>/dev/null | awk 'NR > 1 { print $1 }' | grep -qx "$SANDBOX"
 }
@@ -55,7 +63,7 @@ build() {
 
 run() {
   [ -n "$(template_id)" ] || build
-  sbx env run
+  env_run
 }
 
 recreate() {
@@ -63,7 +71,7 @@ recreate() {
   if sandbox_exists; then
     sbx rm "$SANDBOX"
   fi
-  sbx env run
+  env_run
 }
 
 case "${1:-run}" in

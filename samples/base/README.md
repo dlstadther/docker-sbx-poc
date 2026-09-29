@@ -25,7 +25,7 @@ apt or other download hosts.
 | File | Purpose |
 | --- | --- |
 | `Dockerfile.sbx` | Builds the project template from `docker/sandbox-templates:claude-code`. |
-| `sbxenv.yaml` | Names the template. `sbx env run` merges `~/.sbxenv.yaml` beneath it. |
+| `sbxenv.yaml` | Names the template and mounts the git folder. `sbx env run` merges `~/.sbxenv.yaml` beneath it. |
 | `sbx.sh` | Builds and loads the template, and starts or recreates the sandbox. |
 
 ## Use the sample in your project
@@ -49,6 +49,26 @@ select one of these fixes:
 Do not add a host to the kit for one project. The kit applies to all sandboxes.
 
 If you do not want to commit the files to the project, add them to `.git/info/exclude`.
+
+## Git worktrees
+
+In a git worktree, `.git` is a file that points into the `.git` folder of the main repository. That folder is outside
+the project directory, so sbx does not mount it with the workspace. Without it, every git command fails with
+`fatal: not a git repository`.
+
+`sbx.sh` gets the folder path from `git rev-parse --git-common-dir` on the host and gives it to `sbxenv.yaml` as the
+`gitCommonDir` argument. `sbxenv.yaml` mounts the folder read/write at the same path. In the main checkout, the folder
+is in the workspace already, but the read-only rules below also apply.
+
+The mount makes `hooks/` and `config` read-only. Git on the host runs the hooks and the commands that `config` names,
+for example `core.hooksPath` and `core.fsmonitor`. A writable copy lets the sandbox run commands on the host. Commands
+that write `config` fail in the sandbox, for example `git push -u` and `git branch --set-upstream-to`. Use
+`git push origin HEAD`. If you use `gh pr create`, give it `--head <branch>`.
+
+Start the sandbox with `sbx.sh`. If you run `sbx env run` directly, it stops because `gitCommonDir` has no value.
+
+Do not run `git worktree prune` in the sandbox. The sandbox does not mount your other worktrees, so git thinks that they
+were deleted and removes their records. To remove one worktree, run `git worktree remove <path>`.
 
 ## sbx.sh commands
 

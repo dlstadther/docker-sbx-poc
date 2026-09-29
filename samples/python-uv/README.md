@@ -29,7 +29,7 @@ When a Python version, uv, or a system package changes, you rebuild the template
 | File | Purpose |
 | --- | --- |
 | `Dockerfile.sbx` | Builds the template with uv, two Python versions, a C compiler, and a `python` command. |
-| `sbxenv.yaml` | Names the template and turns off Python downloads. |
+| `sbxenv.yaml` | Names the template, turns off Python downloads, and mounts the git folder. See [Git worktrees](../base/README.md#git-worktrees). |
 | `sbx.sh` | Builds and loads the template, and starts or recreates the sandbox. It is the same as in the base sample. |
 
 The `claude-safe` kit sets two uv values for all sandboxes:

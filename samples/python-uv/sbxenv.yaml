@@ -8,3 +8,17 @@ sandboxOptions:
 env:
   # Both Pythons are in the template. uv must not go to GitHub for them.
   UV_PYTHON_DOWNLOADS: never
+args:
+  gitCommonDir:
+    required: true
+    description: Absolute path of the main repository .git folder. sbx.sh sets it.
+# In a git worktree, .git is a file that points into the main repository .git
+# folder. That folder is outside the workspace, so git fails unless it is mounted.
+# hooks/ and config stay read-only: git on the host runs what they name, so a
+# writable copy lets the sandbox run commands on the host.
+additionalWorkspaces:
+  - path: ${{ env.args.gitCommonDir }}
+  - path: ${{ env.args.gitCommonDir }}/hooks
+    readOnly: true
+  - path: ${{ env.args.gitCommonDir }}/config
+    readOnly: true
