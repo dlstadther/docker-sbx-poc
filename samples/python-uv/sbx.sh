@@ -44,7 +44,8 @@ sandbox_exists() {
 build() {
   # Provenance data holds a build time, so without this flag each build gets a new image ID, and the check below
   # always finds a change.
-  docker build --provenance=false "$@" -t "$IMAGE" - < Dockerfile.sbx
+  # --pull gets the newest base image, which has a newer Claude Code.
+  docker build --pull --provenance=false "$@" -t "$IMAGE" - < Dockerfile.sbx
 
   if [ "$(docker_id)" = "$(template_id)" ]; then
     echo "sbx already has this template."
